@@ -1,0 +1,49 @@
+// frost realm
+//  Tab "Lodge": Hearth (terminal) | The Workbench (nvim) over Aurora (animation) + Vitals
+//  Tab "Grove": Wanderer | Unclaimed over Skies + Lantern Grove (animation) + The Bard
+layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        children
+        pane size=1 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+    tab name="Lodge" focus=true split_direction="vertical" {
+        pane size="43%" borderless=true name="Hearth" focus=true command="zsh"
+        pane split_direction="horizontal" {
+            pane size="65%" name="The Workbench" command="nvim"
+            pane split_direction="vertical" {
+                pane size="42%" name="Hearthfire" command="sh" {
+                    args "-c" "exec perl \"${REALM_HOME:-$HOME/.config/terminal-realms}/realms/frost/frostfall\" fire"
+                }
+                pane name="Vitals" command="sh" {
+                    args "-c" "exec \"${REALM_HOME:-$HOME/.config/terminal-realms}/panes/stats\""
+                }
+            }
+        }
+    }
+    tab name="Grove" split_direction="horizontal" {
+        pane size="60%" split_direction="vertical" {
+            pane name="Wanderer" focus=true command="sh" {
+                args "-c" "REALM_QUIET=1 exec zsh"
+            }
+            pane name="Unclaimed" command="sh" {
+                args "-c" "REALM_QUIET=1 exec zsh"
+            }
+        }
+        pane split_direction="vertical" {
+            pane size="33%" name="Skies" command="sh" {
+                args "-c" "exec \"${REALM_HOME:-$HOME/.config/terminal-realms}/panes/skies\""
+            }
+            pane size="34%" name="Lantern Grove" command="sh" {
+                args "-c" "exec perl \"${REALM_HOME:-$HOME/.config/terminal-realms}/realms/frost/frostfall\" grove"
+            }
+            pane name="The Bard" command="sh" {
+                args "-c" "exec \"${REALM_HOME:-$HOME/.config/terminal-realms}/panes/bard\""
+            }
+        }
+    }
+}

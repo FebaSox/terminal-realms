@@ -1,0 +1,11 @@
+#!/bin/sh
+# Vitals pane: mactop in the realm's colors (macOS), btop or htop otherwise.
+case "${REALM:-$(cat "${REALM_HOME:-$HOME/.config/terminal-realms}/current" 2>/dev/null)}" in
+    frost) FG="#9cc4f0"; BG="#0a0f1a" ;;
+    *)     FG="#fe8700"; BG="#090909" ;;
+esac
+command -v mactop >/dev/null 2>&1 && exec mactop --foreground "$FG" --background "$BG"
+command -v btop >/dev/null 2>&1 && exec btop
+command -v htop >/dev/null 2>&1 && exec htop
+echo "Install a system monitor: brew install mactop (macOS) or btop/htop"
+exec sleep 86400

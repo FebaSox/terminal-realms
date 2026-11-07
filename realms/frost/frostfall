@@ -1,0 +1,306 @@
+#!/usr/bin/perl
+# frostfall: a quiet snowy night for a terminal pane.
+#   frostfall aurora   aurora over snowy pines and a cabin with a lit window (default)
+#   frostfall grove    snow-laden pines with warm lanterns, aurora faint above
+# Ctrl+C to stop.  FROST_FPS=15 (frames per second)
+use strict; use warnings; use utf8;
+use Time::HiRes qw(time sleep);
+binmode STDOUT, ':encoding(UTF-8)'; $| = 1;
+
+my $MODE = ($ARGV[0] // 'aurora'); $MODE = 'aurora' unless $MODE eq 'grove' or $MODE eq 'fire';
+#   frostfall fire     a sword-planted bonfire in a snowy clearing, embers rising through the snow
+my $FPS = $ENV{FROST_FPS} || 15;
+my $TEST = $ENV{FROST_TEST} || 0;
+my $ONCE = $ENV{FROST_ONCE} || 0;
+my $PIN = $ENV{FROST_PIN} || '';      # paint | anim : draw at the top of the terminal (frost.sh)
+my $PIN_SECS = $ENV{FROST_SECS} || 25; my $PIN_MH = $ENV{FROST_MH} || 0; my $BOX = $ENV{BOXTXT} // ''; utf8::decode($BOX);
+my $SHELLPID = $ENV{REALM_SHELL} || 0; my $PIDFILE = $ENV{PIDFILE} || '';   # print one still frame inline (used by the frost greeting)
+my ($R, $C) = (20, 60);
+sub get_size {
+    if ($PIN) { ($R, $C) = ($ENV{FROST_SH} || 11, $ENV{FROST_W} || 60); return }
+    my $s = `stty size </dev/tty 2>/dev/null`;
+    if (defined $s && $s =~ /(\d+)\s+(\d+)/ && $1 > 0) { ($R, $C) = ($1, $2) }
+    elsif ($ENV{LINES}) { ($R, $C) = ($ENV{LINES}, $ENV{COLUMNS}) }
+}
+my $quit = 0; my $resized = 0;
+$SIG{INT} = $SIG{TERM} = $SIG{HUP} = sub { $quit = 1 };
+$SIG{WINCH} = sub { $resized = 1 };
+print "\e[?1049h\e[?25l\e[2J" unless $TEST or $ONCE or $PIN;
+END { print "\e[0m\e[?25h\e[?1049l" unless $TEST or $ONCE or $PIN;
+      if ($PIN && $PIDFILE && open(my $pf, '<', $PIDFILE)) { my $p = <$pf>; close $pf; unlink $PIDFILE if defined $p && $p == $$ } }
+
+sub mix { my ($a, $b, $k) = @_; $k = 0 if $k < 0; $k = 1 if $k > 1; [ map { $a->[$_] + ($b->[$_] - $a->[$_]) * $k } 0 .. 2 ] }
+sub rgb { join ';', map { my $v = int($_ + .5); $v < 0 ? 0 : $v > 255 ? 255 : $v } @{ $_[0] } }
+
+# palette: deep navy and dusky snow, warm lantern amber, aurora greens to violet
+my @PINE  = (18, 32, 44);   my @PINE2 = (26, 44, 58);
+my @SNOW  = (104, 122, 150); my @SNOWD = (70, 86, 112);
+my @GROUND = (84, 100, 128);
+my @WOOD  = (40, 30, 30);    my @ROOF = (96, 112, 140);
+my @LAMP  = (255, 186, 92);  my @GLOW = (255, 150, 60);
+my @AUR = ([70, 220, 150], [60, 190, 200], [130, 110, 220]);
+
+my (@base, $PH, @lamps, @stars, @flakes, @gy, @fire, $FW, $FPH, $FX, $FBASE, @embers);
+sub px { my ($x, $y, $c) = @_; return if $x < 0 || $y < 0 || $x >= $C || $y >= $PH; $base[$y][$x] = $c }
+
+sub tree {   # snowy pine with its tip at (cx, top), height h pixels
+    my ($cx, $top, $h, $lamp) = @_;
+    my $tiers = $h >= 14 ? 4 : 3;
+    for my $y ($top .. $top + $h - 1) {
+        my $k = ($y - $top) / $h;
+        my $tier = int($k * $tiers);
+        my $in = $k * $tiers - $tier;                     # 0 at the top of each tier
+        my $hw = (.6 + $tier * 1.15 + $in * 2.3) * ($h / 16);
+        $hw = 0.5 if $hw < .5;
+        for my $x (int($cx - $hw + .5) .. int($cx + $hw + .5)) {
+            my $edge = abs($x - $cx) / ($hw + .01);
+            my $snowy = ($in < .28) || ($edge > .78 && $in < .5);
+            px($x, $y, $snowy ? ($x < $cx ? [@SNOW] : [@SNOWD]) : ($x < $cx ? [@PINE2] : [@PINE]));
+        }
+        if ($lamp && $tier >= 1 && abs($in - .55) < .05 && rand() < .5) {
+            my $lx = int($cx + ($tier % 2 ? 1 : -1) * $hw * .7);
+            push @lamps, [$lx, $y + 1, rand(6.28)];
+        }
+    }
+    px($cx, $top + $h, [@WOOD]); px($cx, $top + $h + 1, [@WOOD]);
+}
+
+sub build {
+    get_size();
+    $PH = $R * 2;
+    @base = map { [ (undef) x $C ] } 1 .. $PH;
+    @lamps = ();
+    srand(7);
+    # ground: soft snow drifts
+    @gy = ();
+    for my $x (0 .. $C - 1) {
+        my $g = $PH - 3 - int(1.2 + sin($x * .11) + .6 * sin($x * .31 + 1));
+        $gy[$x] = $g;
+        for my $y ($g .. $PH - 1) { px($x, $y, $y == $g ? [@SNOW] : [@GROUND]) }
+    }
+    my $ground = sub { my $x = shift; $x = 0 if $x < 0; $x = $C - 1 if $x >= $C; $gy[$x] };
+    my $treeh = int($PH * ($MODE eq 'grove' ? .62 : .45)); $treeh = 8 if $treeh < 8;
+    if ($MODE eq 'aurora') {
+        # a small cabin with a lit window, left of centre
+        my $cab = $ENV{FROST_CABIN} || .3;            # where the cabin sits, as a fraction of the width
+        my $cw = $C >= 50 ? 12 : 9; my $cx0 = int($C * $cab) - int($cw / 2); my $gy = $ground->(int($C * $cab)) - 1;
+        my $chh = int($cw * .45);
+        for my $y ($gy - $chh .. $gy) { px($_, $y, [@WOOD]) for $cx0 .. $cx0 + $cw - 1 }
+        for my $r (0 .. int($cw / 2) + 1) {         # snowy roof
+            my $y = $gy - $chh - 1 - $r;
+            px($_, $y, $r == 0 || $_ == $cx0 - 1 + $r || $_ == $cx0 + $cw - $r ? [@ROOF] : [@SNOWD]) for $cx0 - 1 + $r .. $cx0 + $cw - $r;
+        }
+        my $wx = $cx0 + int($cw / 2) - 1; my $wy = $gy - int($chh / 2) - 1;
+        push @lamps, [$wx, $wy, 0, 2], [$wx + 1, $wy, 1, 2], [$wx, $wy + 1, 2, 2], [$wx + 1, $wy + 1, 3, 2];
+        px($cx0 + $cw - 3, $gy - $chh - int($cw / 2) + 1, [@WOOD]); # chimney
+        # pines across the horizon, taller at the edges
+        my @spots = $cab == .3 ? (2, 8, int($C * .55), int($C * .66), int($C * .78), int($C * .9), $C - 3)
+                              : (2, 7, int($C * .15), int($C * .25), int($C * .75), int($C * .85), $C - 7, $C - 3);
+        @spots = grep { $_ < $cx0 - 4 || $_ > $cx0 + $cw + 3 } @spots;
+        for my $cx (@spots) {
+            my $h = int($treeh * (.6 + .5 * abs($cx - $C / 2) / ($C / 2)) * (.85 + rand(.3)));
+            tree($cx, $ground->($cx) - $h - 2, $h, 0);
+        }
+    } elsif ($MODE eq 'fire') {
+        $FW = int($C / 5); $FW = 9 if $FW < 9; $FW = 19 if $FW > 19; $FW |= 1;
+        $FPH = int($PH * .5); $FPH = 8 if $FPH < 8;
+        $FX = int($C / 2 - $FW / 2); $FBASE = $ground->(int($C / 2)) - 1;
+        @fire = map { [ (0) x $FW ] } 1 .. $FPH;
+        @embers = ();
+        for my $cx (2, 8, int($C * .12), int($C * .88), $C - 8, $C - 3) {   # dark pines around the clearing
+            my $h = int($treeh * (.8 + rand(.4)));
+            tree($cx, $ground->($cx) - $h - 2, $h, 0);
+        }
+        for my $x ($FX - 2 .. $FX + $FW + 1) {                          # ring of stones
+            next unless $x <= $FX || $x >= $FX + $FW - 1 || ($x % 3 == 0);
+            px($x, $FBASE, [62, 58, 64]); px($x, $FBASE + 1, [48, 44, 52]) if $x % 2;
+        }
+    } else {
+        my $n = int($C / 11) + 2;
+        for my $i (0 .. $n - 1) {
+            my $cx = int(($i + .5) * $C / $n + rand(4) - 2);
+            my $h = int($treeh * (.75 + rand(.35)));
+            tree($cx, $ground->($cx) - $h - 2, $h, 1);
+        }
+    }
+    srand();
+    @stars = map { [ int(rand($C)), int(rand($R * .55)), rand(6.28) ] } 1 .. int($C * $R / 70) + 3;
+    @flakes = ();
+}
+build();
+
+my $t0 = time - ($ONCE ? rand(200) : 0); my $frame = 0;
+if ($PIN && $PIDFILE && open(my $pf, '>', $PIDFILE)) { print $pf $$; close $pf }
+if ($ONCE or $PIN) { push @flakes, { x => rand($C), y => rand($R), vy => 0, ph => rand(6.28), n => rand() } for 1 .. int($C * $R / 30) }
+while (not $quit) {
+    if ($resized) { $resized = 0; build(); print "\e[2J" }
+    my $t = time - $t0;
+    # pixel layer: static scene + lantern glow
+    my @pix = map { [ @$_ ] } @base;
+    for my $L (@lamps) {
+        my ($lx, $ly, $ph, $win) = @$L;
+        my $f = .78 + .14 * sin($t * 1.1 + $ph) + .08 * sin($t * 2.3 + $ph * 2);
+        my $rad = $win ? 3 : 4;
+        for my $dy (-$rad .. $rad) { for my $dx (-$rad * 2 .. $rad * 2) {
+            my ($x, $y) = ($lx + $dx, $ly + $dy); next if $x < 0 || $y < 0 || $x >= $C || $y >= $PH;
+            my $c = $pix[$y][$x] or next;
+            my $d = sqrt(($dx / 2) ** 2 + $dy ** 2) / $rad; next if $d >= 1;
+            $pix[$y][$x] = mix($c, \@GLOW, (1 - $d) ** 2 * ($win ? .3 : .55) * $f);
+        } }
+        my $lc = mix([150, 80, 30], \@LAMP, $f);
+        $pix[$ly][$lx] = $lc if $ly < $PH && $lx >= 0 && $lx < $C;
+        $pix[$ly - 1][$lx] = [30, 26, 30] if not $win and $ly >= 1;   # lantern cap
+    }
+
+    my $flick = .85 + .15 * sin($t * 3.2) * sin($t * 1.4);
+    if ($MODE eq 'fire') {
+        if ($frame % 2 == 0) {                                           # calm doom-fire, half rate
+            for my $x (0 .. $FW - 1) {
+                my $edge = 1 - abs($x - ($FW - 1) / 2) / (($FW - 1) / 2 + 1);
+                $fire[$FPH - 1][$x] = int(10 * ($edge ** 1.1) * (.8 + rand(.2)) + .5);
+            }
+            for my $y (0 .. $FPH - 2) { for my $x (0 .. $FW - 1) {
+                my $sx = $x + int(rand(3)) - 1; $sx = 0 if $sx < 0; $sx = $FW - 1 if $sx >= $FW;
+                my $edge = abs($x - ($FW - 1) / 2) / (($FW - 1) / 2 + 1);
+                my $v = $fire[$y + 1][$sx] - int(rand(1.0 + 2.6 * $edge + 10 / $FPH));
+                $fire[$y][$x] = $v < 0 ? 0 : $v;
+            } }
+        }
+        my ($fcx, $fcy) = ($C / 2, $FBASE - 2);                         # firelight on snow and pines
+        my $rad = $C * .45;
+        for my $y (0 .. $PH - 1) { for my $x (0 .. $C - 1) {
+            my $c = $pix[$y][$x] or next;
+            my $d = sqrt((($x - $fcx) / 2) ** 2 + ($y - $fcy) ** 2) / ($rad / 2); next if $d >= 1;
+            $pix[$y][$x] = mix($c, \@GLOW, (1 - $d) ** 2 * .6 * $flick);
+        } }
+        my @FP = ([0,0,0],[60,12,4],[110,22,6],[160,36,8],[200,58,10],[232,88,14],[250,120,22],[255,155,40],[255,190,70],[255,222,120],[255,244,190]);
+        for my $y (0 .. $FPH - 1) { for my $x (0 .. $FW - 1) {
+            my $v = $fire[$y][$x]; next if $v < 2;
+            my $off = abs($x - ($FW - 1) / 2) / (($FW - 1) / 2 + .5);
+            next if $off > .3 + .7 * $y / $FPH;
+            my $py = $FBASE - $FPH + 1 + $y; next if $py < 0;
+            $pix[$py][$FX + $x] = $FP[$v];
+        } }
+        my $sx = int($C / 2); my $top = $FBASE - int($FPH * .95);          # the coiled sword
+        my $steel = mix([128, 124, 122], [255, 170, 90], .3 * $flick);
+        for my $py ($top .. $FBASE) { $pix[$py][$sx] = mix($steel, [230, 110, 40], (($py - $top) / ($FBASE - $top + 1)) ** .7 * .9) if $py >= 0 }
+        $pix[$top + 2][$_] = $steel for ($sx - 2 .. $sx + 2);
+        $pix[$top - $_][$sx] = [96, 72, 50] for 1 .. 3;
+        $pix[$top - 4][$sx] = [140, 110, 70];
+    }
+    my (@ch, @co);
+    for my $y (0 .. $R - 1) { $ch[$y] = [ (' ') x $C ]; $co[$y] = [ (undef) x $C ] }
+    # aurora curtains (cell level, soft glyphs)
+    my $top = $MODE eq 'grove' ? .5 : $MODE eq 'fire' ? .35 : 1;
+    for my $x (0 .. $C - 1) {
+        my $y0 = $R * .12 + 1.6 * sin($x * .07 + $t * .12) + .9 * sin($x * .19 - $t * .18);
+        my $len = 2.5 + 1.8 * (.5 + .5 * sin($x * .05 + $t * .12));
+        my $s = (.62 + .38 * sin($x * .17 + $t * .3)) * (.75 + .25 * sin($x * .041 - $t * .15)) * (.85 + .15 * sin($x * 1.3 + $t * .4)) * $top;
+        for my $i (0 .. int($len + 1)) {
+            my $y = int($y0 + $i); next if $y < 0 || $y >= $R;
+            my $k = $i / ($len + 1);
+            my $hue = .5 + .5 * sin($x * .03 + $t * .07);
+            my $col = $k < .45 ? mix($AUR[0], $AUR[1], $k / .45 * .8 + $hue * .2) : mix($AUR[1], $AUR[2], ($k - .45) / .55);
+            my $a = $s * (1 - $k) ** 1.3;
+            next if $a < .12;
+            $ch[$y][$x] = $a > .6 ? '▓' : $a > .38 ? '▒' : '░';
+            $co[$y][$x] = '38;2;' . rgb(mix([10, 14, 26], $col, $a)) . ';49';
+        }
+    }
+    for my $s (@stars) {
+        next if $ch[$s->[1]][$s->[0]] ne ' ';
+        my $b = .4 + .3 * sin($t * .6 + $s->[2]);
+        $ch[$s->[1]][$s->[0]] = $b > .6 ? '+' : '·';
+        $co[$s->[1]][$s->[0]] = '38;2;' . rgb([110 * $b + 40, 125 * $b + 45, 160 * $b + 50]) . ';49';
+    }
+    # pixels to half-block cells
+    for my $y (0 .. $R - 1) { for my $x (0 .. $C - 1) {
+        my ($a, $b) = ($pix[2 * $y][$x], $pix[2 * $y + 1][$x]);
+        next unless $a || $b;
+        if ($a && $b) { $ch[$y][$x] = '▀'; $co[$y][$x] = '38;2;' . rgb($a) . ';48;2;' . rgb($b) }
+        elsif ($a)    { $ch[$y][$x] = '▀'; $co[$y][$x] = '38;2;' . rgb($a) . ';49' }
+        else          { $ch[$y][$x] = '▄'; $co[$y][$x] = '38;2;' . rgb($b) . ';49' }
+    } }
+    if ($MODE eq 'fire') {
+        push @embers, { x => $C / 2 + (rand($FW) - $FW / 2) * .6, y => ($FBASE - $FPH * .6) / 2, vy => .07 + rand(.14), ph => rand(6.28), life => 1 } if rand() < .3;
+        @embers = grep { $_->{life} > 0 && $_->{y} > 0 } @embers;
+        for my $e (@embers) {
+            $e->{y} -= $e->{vy}; $e->{x} += .18 * sin($t * 1.1 + $e->{ph}) + .02; $e->{life} -= .006 + rand(.008);
+            my ($x, $y) = (int($e->{x}), int($e->{y})); next if $x < 0 || $x >= $C || $y < 0 || $y >= $R;
+            next if defined $co[$y][$x] && $co[$y][$x] =~ /48;2/;
+            my $l = $e->{life};
+            my $col = $l > .66 ? mix([255, 120, 30], [255, 220, 120], ($l - .66) * 3) : mix([90, 22, 6], [255, 120, 30], $l * 1.5);
+            $ch[$y][$x] = $l > .8 ? '•' : $l > .35 ? '·' : '.'; $co[$y][$x] = '38;2;' . rgb($col) . ';49';
+        }
+    }
+    # snowfall, slow and drifting
+    push @flakes, { x => rand($C), y => -1, vy => .05 + rand(.09), ph => rand(6.28), n => rand() } if rand() < $C / 45;
+    @flakes = grep { $_->{y} < $R } @flakes;
+    for my $f (@flakes) {
+        $f->{y} += $f->{vy}; $f->{x} += .09 * sin($t * .7 + $f->{ph}) + .015;
+        my ($x, $y) = (int($f->{x}), int($f->{y})); next if $x < 0 || $x >= $C || $y < 0;
+        my $cell = $co[$y][$x];
+        next if defined $cell && $cell =~ /48;2/;            # behind trees and the cabin
+        next if $MODE eq 'fire' && abs($x - $C / 2) < $FW * .8 && $y > ($FBASE - $FPH * 1.2) / 2;   # melts over the fire
+        my $near = $f->{n} > .8;
+        $ch[$y][$x] = $near ? '•' : $f->{n} > .4 ? '·' : '.';
+        my $l = $near ? 1 : .7;
+        $co[$y][$x] = '38;2;' . rgb([150 * $l, 165 * $l, 195 * $l]) . ';49';
+    }
+
+    if ($PIN) {
+        my $o = "\e[?2026h\e7";
+        for my $y (0 .. $R - 1) {
+            $o .= "\e[" . ($y + 1) . ";1H" . (' ' x $PIN_MH);
+            my $prev = '';
+            for my $x (0 .. $C - 1) {
+                my $c = $co[$y][$x];
+                if (defined $c) { if ($c ne $prev) { $o .= "\e[${c}m"; $prev = $c } }
+                elsif ($prev ne '') { $o .= "\e[0m"; $prev = '' }
+                $o .= $ch[$y][$x];
+            }
+            $o .= "\e[0m\e[K";
+        }
+        if ($PIN eq 'paint' or $frame % 40 == 0) {
+            my @b = split /\n/, $BOX;
+            $o .= "\e[" . ($R + 1 + $_) . ";1H" . $b[$_] . "\e[0m\e[K" for 0 .. $#b;
+        }
+        $o .= "\e8\e[?2026l";
+        my $ok = print $o;
+        $frame++;
+        last if $PIN eq 'paint' or not defined $ok or $quit or $t >= $PIN_SECS;
+        last if $SHELLPID && $frame % 40 == 0 && not kill(0, $SHELLPID);
+        my $d = $t0 + $frame / $FPS - time; sleep($d) if $d > 0;
+        next;
+    }
+    if ($ONCE) {
+        my @rows;
+        for my $y (0 .. $R - 1) {
+            my ($o, $prev) = ('', '');
+            for my $x (0 .. $C - 1) {
+                my $c = $co[$y][$x];
+                if (defined $c) { if ($c ne $prev) { $o .= "\e[${c}m"; $prev = $c } }
+                elsif ($prev ne '') { $o .= "\e[0m"; $prev = '' }
+                $o .= $ch[$y][$x];
+            }
+            push @rows, $o . "\e[0m";
+        }
+        print join("\n", @rows), "\n";
+        last;
+    }
+    my $out = "\e[?2026h";
+    for my $y (0 .. $R - 1) {
+        $out .= "\e[" . ($y + 1) . ";1H";
+        my $prev = '';
+        for my $x (0 .. $C - 1) {
+            my $c = $co[$y][$x];
+            if (defined $c) { if ($c ne $prev) { $out .= "\e[${c}m"; $prev = $c } }
+            elsif ($prev ne '') { $out .= "\e[0m"; $prev = '' }
+            $out .= $ch[$y][$x];
+        }
+    }
+    print $out . "\e[0m\e[?2026l";
+    $frame++;
+    last if $TEST && $frame >= $TEST;
+    my $d = $t0 + $frame / $FPS - time; sleep($d) if $d > 0 and not $TEST;
+}

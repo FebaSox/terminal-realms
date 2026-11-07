@@ -1,0 +1,29 @@
+# terminal-realms settings. Copy to ~/.config/terminal-realms/settings.zsh and change what you like.
+# Everything here is optional; the values shown are the defaults.
+
+# REALM_DEFAULT=bonfire          realm a new window starts in (until you switch with `wizseb <name>`)
+# REALM_PROMPT=1                 0 = keep your own prompt instead of the realm's oh-my-posh prompt
+# REALM_COLORS=1                 0 = don't recolor the terminal window
+# REALM_EZA=1                    0 = don't turn ls into eza with icons
+# REALM_GREETING=1               0 = no once-a-day hello from the wizard
+# REALM_LS=1                     0 = keep your own ls / eza colors
+
+# --- the pinned scene at the top of the terminal ---
+# REALM_PIN=1                    0 = scene scrolls away like normal output (type `wizseb pin` to bring it back)
+# REALM_SECONDS=25               how long it animates after each Enter (inf = forever, 0 = never)
+# REALM_FLARE_AFTER=10           a command this long (seconds) makes the scene flare and rings the bell
+# REALM_FLARE=1                  0 = never flare
+# REALM_BELL=1                   0 = flare without the bell
+# REALM_DIED=1                   0 = no "YOU DIED" when a command fails
+# REALM_FLARE_SKIP="nvim vim less man htop btop ssh zellij"   programs that never flare
+# REALM_DIED_SKIP="grep rg diff test git"                       commands whose exit code 1 is normal
+
+# --- bonfire realm ---
+# REALM_BONFIRE_TITLE="Wizards Bonfire"
+# REALM_BONFIRE_INFO="Class=Pyromancer;Boss=Artorias;Weapon=Zweihander"   rows shown in the box (Label=Value;...)
+# EMBER_LETTERS=steel            title letter colors: steel, bone, gold, fire
+
+# --- weather pane (Camp / Grove tabs) ---
+# REALM_PLACE="Wyoming, MI"      leave all three unset to guess from your IP address
+# REALM_LAT=42.91
+# REALM_LON=-85.70
