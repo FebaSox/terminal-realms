@@ -60,7 +60,8 @@ function M.alpha(dashboard)
   local s = dashboard.section
   s.header.val = art.lines; s.header.opts.hl = art.hl
   if art.quote then
-    local q = (vim.env.REALM_QUOTE and vim.env.REALM_QUOTE ~= "") and vim.env.REALM_QUOTE or art.quote()
+    local same = vim.env.REALM_QUOTE_REALM == nil or vim.env.REALM_QUOTE_REALM == M.name
+    local q = (same and vim.env.REALM_QUOTE and vim.env.REALM_QUOTE ~= "") and vim.env.REALM_QUOTE or art.quote()
     local mark = art.quote_mark or "*"
     s.footer.val = mark .. " " .. q .. " " .. mark
     s.footer.opts.hl = "AlphaQuote"; s.footer.opts.position = "center"

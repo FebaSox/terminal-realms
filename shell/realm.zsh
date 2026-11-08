@@ -12,6 +12,9 @@ REALM_HOME="${REALM_HOME:-$HOME/.config/terminal-realms}"
 _realm_default() { cat "$REALM_HOME/current" 2>/dev/null || echo "${REALM_DEFAULT:-bonfire}"; }
 export REALM="${REALM:-$(_realm_default)}"
 [[ -d $REALM_HOME/realms/$REALM ]] || export REALM=bonfire
+# a quote picked in another realm (say, inherited by a Zellij pane) gets replaced
+[[ ${REALM_QUOTE_REALM:-} != $REALM ]] && REALM_QUOTE=""
+export REALM_QUOTE_REALM=$REALM
 REALM_DIR="$REALM_HOME/realms/$REALM"
 
 # per-window colors through terminal escape codes (Ghostty, kitty, WezTerm, iTerm2 and most others)
