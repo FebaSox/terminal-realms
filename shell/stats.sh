@@ -21,7 +21,9 @@ fi
 fmt_up() { local s=$1; printf '%dd %dh %dm' $((s / 86400)) $((s % 86400 / 3600)) $((s % 3600 / 60)); }
 if [ "$(uname)" = Darwin ]; then
     if [ -z "$UP" ]; then
-        boot=$(sysctl -n kern.boottime 2>/dev/null | sed -E 's/.*sec = ([0-9]+).*/\1/')
+        # The leading .* is greedy and captures the usec field instead of sec;
+        # anchoring on the '{' before sec makes the match unique.
+        boot=$(sysctl -n kern.boottime 2>/dev/null | sed -E 's/.*\{ sec = ([0-9]+).*/\1/')
         [ -n "$boot" ] && UP=$(fmt_up $(( $(date +%s) - boot )))
     fi
     [ -z "$CPU" ] && CPU=$(sysctl -n machdep.cpu.brand_string 2>/dev/null)
