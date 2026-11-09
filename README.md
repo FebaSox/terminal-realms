@@ -53,7 +53,7 @@ What you get:
 **New Mac, or want the whole setup?** One line installs everything: the tools, the font, the configs and both realms.
 
 ```sh
-git clone https://github.com/FebaSox/terminal-realms.git ~/terminal-realms && ~/terminal-realms/install.sh --full
+git clone https://github.com/wizseh/terminal-realms.git ~/terminal-realms && ~/terminal-realms/install.sh --full
 ```
 
 Then quit and reopen Ghostty, and type `wizseb`.
@@ -61,7 +61,7 @@ Then quit and reopen Ghostty, and type `wizseb`.
 **Already have a setup you like?** Install just the themes on top of it:
 
 ```sh
-git clone https://github.com/FebaSox/terminal-realms.git ~/terminal-realms && ~/terminal-realms/install.sh
+git clone https://github.com/wizseh/terminal-realms.git ~/terminal-realms && ~/terminal-realms/install.sh
 ```
 
 ### What `--full` sets up
@@ -199,6 +199,6 @@ More realms are in the works. Ideas and pull requests for new ones are welcome. 
 
 ## Credits
 
-Made by **WizSeb** ([@FebaSox](https://github.com/FebaSox)), with help from Claude. If you share a screenshot, a shout-out is appreciated. Inspired by Dark Souls (FromSoftware). This is a fan project, not affiliated with them. Weather by [Open-Meteo](https://open-meteo.com).
+Made by **WizSeb** ([@wizseh](https://github.com/wizseh)), with help from Claude. If you share a screenshot, a shout-out is appreciated. Inspired by Dark Souls (FromSoftware). This is a fan project, not affiliated with them. Weather by [Open-Meteo](https://open-meteo.com).
 
 License: MIT
