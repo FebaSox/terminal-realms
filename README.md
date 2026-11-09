@@ -2,7 +2,10 @@
 
 Cozy, animated themes for your terminal, Zellij and Neovim. Each theme is a **realm**.
 
-![terminal-realms demo](demo.gif)
+<p align="center">
+  <img src="demo.gif" width="49%" alt="Bonfire and frost demo">
+  <img src="mainframe-demo.gif" width="49%" alt="Mainframe demo">
+</p>
 
 > **Three realms to install, plus the wizard's own.** More are on the way over the coming months.
 
@@ -23,10 +26,6 @@ What you get:
 
 ## Screenshots
 
-**The first cut**: bonfire and frost
-
-![first demo](demo.gif)
-
 **Bonfire**: the workspace tab
 
 ![bonfire realm](bonfire.png)
@@ -44,6 +43,8 @@ What you get:
 ![mainframe realm](mainframe.png)
 
 **Vialmancy** ✦ The wizard's go-to realm. Not part of the public install. It's invite only
+
+![vialmancy demo](vialmancy-demo.gif)
 
 ![vialmancy realm](vialmancy.png)
 
