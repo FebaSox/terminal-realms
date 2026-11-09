@@ -1,0 +1,129 @@
+// Mainframe: black and white. The active tab is a white block.
+themes {
+    realm-mainframe {
+        text_unselected {
+            base 214 214 214
+            background 5 5 5
+            emphasis_0 240 240 240
+            emphasis_1 200 200 200
+            emphasis_2 170 170 170
+            emphasis_3 150 150 150
+        }
+        text_selected {
+            base 245 245 245
+            background 30 30 30
+            emphasis_0 240 240 240
+            emphasis_1 200 200 200
+            emphasis_2 170 170 170
+            emphasis_3 150 150 150
+        }
+        ribbon_unselected {
+            base 214 214 214
+            background 30 30 30
+            emphasis_0 170 170 170
+            emphasis_1 200 200 200
+            emphasis_2 240 240 240
+            emphasis_3 150 150 150
+        }
+        ribbon_selected {
+            base 5 5 5
+            background 240 240 240
+            emphasis_0 30 30 30
+            emphasis_1 170 170 170
+            emphasis_2 200 200 200
+            emphasis_3 150 150 150
+        }
+        table_title {
+            base 240 240 240
+            background 5 5 5
+            emphasis_0 200 200 200
+            emphasis_1 170 170 170
+            emphasis_2 214 214 214
+            emphasis_3 150 150 150
+        }
+        table_cell_unselected {
+            base 214 214 214
+            background 5 5 5
+            emphasis_0 240 240 240
+            emphasis_1 200 200 200
+            emphasis_2 170 170 170
+            emphasis_3 150 150 150
+        }
+        table_cell_selected {
+            base 245 245 245
+            background 30 30 30
+            emphasis_0 240 240 240
+            emphasis_1 200 200 200
+            emphasis_2 170 170 170
+            emphasis_3 150 150 150
+        }
+        list_unselected {
+            base 214 214 214
+            background 5 5 5
+            emphasis_0 240 240 240
+            emphasis_1 200 200 200
+            emphasis_2 170 170 170
+            emphasis_3 150 150 150
+        }
+        list_selected {
+            base 245 245 245
+            background 30 30 30
+            emphasis_0 240 240 240
+            emphasis_1 200 200 200
+            emphasis_2 170 170 170
+            emphasis_3 150 150 150
+        }
+        frame_unselected {
+            base 70 70 70
+            background 5 5 5
+            emphasis_0 214 214 214
+            emphasis_1 240 240 240
+            emphasis_2 170 170 170
+            emphasis_3 200 200 200
+        }
+        frame_selected {
+            base 214 214 214
+            background 5 5 5
+            emphasis_0 200 200 200
+            emphasis_1 170 170 170
+            emphasis_2 214 214 214
+            emphasis_3 150 150 150
+        }
+        frame_highlight {
+            base 170 170 170
+            background 5 5 5
+            emphasis_0 200 200 200
+            emphasis_1 240 240 240
+            emphasis_2 214 214 214
+            emphasis_3 150 150 150
+        }
+        exit_code_success {
+            base 170 170 170
+            background 5 5 5
+            emphasis_0 200 200 200
+            emphasis_1 240 240 240
+            emphasis_2 170 170 170
+            emphasis_3 214 214 214
+        }
+        exit_code_error {
+            base 255 255 255
+            background 5 5 5
+            emphasis_0 200 200 200
+            emphasis_1 240 240 240
+            emphasis_2 170 170 170
+            emphasis_3 214 214 214
+        }
+        multiplayer_user_colors {
+            player_1 240 240 240
+            player_2 170 170 170
+            player_3 200 200 200
+            player_4 214 214 214
+            player_5 150 150 150
+            player_6 245 245 245
+            player_7 70 70 70
+            player_8 255 255 255
+            player_9 240 240 240
+            player_10 170 170 170
+        }
+    }
+}

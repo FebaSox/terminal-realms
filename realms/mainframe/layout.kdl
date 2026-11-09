@@ -1,0 +1,49 @@
+// mainframe realm
+//  Tab "Terminal": Console (shell) | The Editor (nvim) over Rain (animation) + Vitals
+//  Tab "Uplink": Session 1 | Session 2 over Skies + Radar (animation) + Radio
+layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        children
+        pane size=1 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+    tab name="Terminal" focus=true split_direction="vertical" {
+        pane size="43%" borderless=true name="Console" focus=true command="zsh"
+        pane split_direction="horizontal" {
+            pane size="65%" name="The Editor" command="nvim"
+            pane split_direction="vertical" {
+                pane size="42%" name="Rain" command="sh" {
+                    args "-c" "exec perl \"${REALM_HOME:-$HOME/.config/terminal-realms}/realms/mainframe/glyphfall\" rain"
+                }
+                pane name="Vitals" command="sh" {
+                    args "-c" "exec \"${REALM_HOME:-$HOME/.config/terminal-realms}/panes/stats\""
+                }
+            }
+        }
+    }
+    tab name="Uplink" split_direction="horizontal" {
+        pane size="60%" split_direction="vertical" {
+            pane name="Session 1" focus=true command="sh" {
+                args "-c" "REALM_QUIET=1 exec zsh"
+            }
+            pane name="Session 2" command="sh" {
+                args "-c" "REALM_QUIET=1 exec zsh"
+            }
+        }
+        pane split_direction="vertical" {
+            pane size="33%" name="Skies" command="sh" {
+                args "-c" "exec \"${REALM_HOME:-$HOME/.config/terminal-realms}/panes/skies\""
+            }
+            pane size="34%" name="Radar" command="sh" {
+                args "-c" "exec perl \"${REALM_HOME:-$HOME/.config/terminal-realms}/realms/mainframe/glyphfall\" radar"
+            }
+            pane name="Radio" command="sh" {
+                args "-c" "exec \"${REALM_HOME:-$HOME/.config/terminal-realms}/panes/bard\""
+            }
+        }
+    }
+}

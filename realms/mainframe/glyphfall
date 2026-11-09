@@ -1,0 +1,293 @@
+#!/usr/bin/perl
+# glyphfall: a quiet old-school terminal room, in black and white.
+#   glyphfall crt     a vintage CRT on a desk, typing away, with code rain falling behind it (default)
+#   glyphfall rain    just the rain: slow columns of glyphs on black
+#   glyphfall radar   an old radar scope: a slow sweep, fading blips, a faint grid
+# Ctrl+C to stop.  GLYPH_FPS=12 (frames per second)
+use strict; use warnings; use utf8;
+use Time::HiRes qw(time sleep);
+binmode STDOUT, ':encoding(UTF-8)'; $| = 1;
+
+my $MODE = ($ARGV[0] // 'crt'); $MODE = 'crt' unless $MODE eq 'rain' or $MODE eq 'radar';
+my $FPS = $ENV{GLYPH_FPS} || 12;
+my $TEST = $ENV{GLYPH_TEST} || 0;
+my $ONCE = $ENV{GLYPH_ONCE} || 0;
+my $PIN = $ENV{GLYPH_PIN} || '';      # paint | anim : draw at the top of the terminal (screen.sh)
+my $PIN_SECS = $ENV{GLYPH_SECS} || 25; my $PIN_MH = $ENV{GLYPH_MH} || 0; my $BOX = $ENV{BOXTXT} // ''; utf8::decode($BOX);
+my $SHELLPID = $ENV{REALM_SHELL} || 0; my $PIDFILE = $ENV{PIDFILE} || '';
+my $USER = $ENV{USER} || `whoami 2>/dev/null` || 'operator'; chomp $USER;
+my ($R, $C) = (20, 60);
+sub get_size {
+    if ($PIN) { ($R, $C) = ($ENV{GLYPH_SH} || 11, $ENV{GLYPH_W} || 60); return }
+    my $s = `stty size </dev/tty 2>/dev/null`;
+    if (defined $s && $s =~ /(\d+)\s+(\d+)/ && $1 > 0) { ($R, $C) = ($1, $2) }
+    elsif ($ENV{LINES}) { ($R, $C) = ($ENV{LINES}, $ENV{COLUMNS}) }
+}
+my $quit = 0; my $resized = 0;
+$SIG{INT} = $SIG{TERM} = $SIG{HUP} = sub { $quit = 1 };
+$SIG{WINCH} = sub { $resized = 1 };
+print "\e[?1049h\e[?25l\e[2J" unless $TEST or $ONCE or $PIN;
+END { print "\e[0m\e[?25h\e[?1049l" unless $TEST or $ONCE or $PIN;
+      if ($PIN && $PIDFILE && open(my $pf, '<', $PIDFILE)) { my $p = <$pf>; close $pf; unlink $PIDFILE if defined $p && $p == $$ } }
+
+sub g { my $v = int($_[0] + .5); $v = 0 if $v < 0; $v = 255 if $v > 255; "$v;$v;$v" }   # a grey
+sub fgc { '38;2;' . g($_[0]) . ($_[1] // ';49') }
+
+# ---- the glyphs: plain ASCII and a few marks, so every font draws them one cell wide ----
+my @GL = split //, '0123456789ABCDEFHKLMNPRTXZ:=+*<>|/\\"^~#%&$@';
+sub glyph { $GL[int rand @GL] }
+
+# ---- pixel scene (crt mode): monitor, keyboard, mug, desk ----
+my (@base, $PH, %screen, @steam, $mugx, $mugy);
+sub px { my ($x, $y, $v) = @_; return if $x < 0 || $y < 0 || $x >= $C || $y >= $PH; $base[$y][$x] = $v }
+sub rect { my ($x0, $y0, $x1, $y1, $v) = @_; for my $y ($y0 .. $y1) { px($_, $y, $v) for $x0 .. $x1 } }
+
+my (@drops, @blips, @lines, $typing, $tpos, $tnext, $cursor_on);
+my @SCRIPT = (
+    [ 'whoami', $USER ], [ 'uptime', ' up 3 days, load 0.42' ], [ 'ls ~/realms', 'bonfire frost mainframe' ],
+    [ 'cat /etc/motd', 'Welcome back.' ], [ 'ping -c1 home', '64 bytes: time=0.4 ms' ], [ 'date +%H:%M', '' ],
+    [ 'echo $SHELL', '/bin/zsh' ], [ 'fortune', 'Read the source.' ], [ 'make', 'nothing to be done.' ],
+);
+my $si = int rand @SCRIPT;
+
+sub build {
+    get_size();
+    $PH = $R * 2;
+    @base = map { [ (undef) x $C ] } 1 .. $PH;
+    %screen = ();
+    if ($MODE eq 'crt') {
+        my $desk = $PH - 3;
+        my $sw = $C >= 56 ? 24 : $C >= 40 ? 18 : 14;                 # screen width in cells
+        my $srows = $R >= 11 ? 5 : $R >= 8 ? 3 : 2;                   # screen height in cells
+        my $at = $ENV{GLYPH_DESK} || ($C >= 100 ? .36 : .5);          # where the monitor sits
+        my $mx0 = int($C * $at - $sw / 2) - 3; $mx0 = 1 if $mx0 < 1;
+        my $mx1 = $mx0 + $sw + 5;
+        my $stop = $desk - 4 - 2 * $srows - 3;                        # top of the casing (pixel row)
+        $stop-- if $stop % 2;                                         # keep the glass on whole cells
+        # desk
+        rect(0, $desk, $C - 1, $desk, 78); rect(0, $desk + 1, $C - 1, $PH - 1, 34);
+        px($_, $desk + 1, 46) for grep { $_ % 9 == 4 } 0 .. $C - 1;
+        # casing with a lit top-left edge and shaded bottom-right
+        rect($mx0, $stop, $mx1, $desk - 4, 150);
+        rect($mx0, $stop, $mx1, $stop, 196); rect($mx0, $stop, $mx0, $desk - 4, 176);
+        rect($mx1, $stop + 1, $mx1, $desk - 4, 104); rect($mx0 + 1, $desk - 4, $mx1, $desk - 4, 112);
+        # glass
+        my ($gx0, $gy0) = ($mx0 + 3, $stop + 2);
+        rect($gx0 - 1, $gy0 - 1, $gx0 + $sw, $gy0 + 2 * $srows, 70);   # bezel lip
+        rect($gx0, $gy0, $gx0 + $sw - 1, $gy0 + 2 * $srows - 1, 8);
+        %screen = (x => $gx0, cy => $gy0 / 2, w => $sw, h => $srows);
+        # power light and vents
+        px($mx1 - 2, $desk - 5, 230);
+        px($_, $desk - 5, 120) for grep { ($_ - $mx0) % 2 == 0 } $mx0 + 2 .. $mx0 + 8;
+        # neck and foot
+        my $mc = int(($mx0 + $mx1) / 2);
+        rect($mc - 2, $desk - 3, $mc + 2, $desk - 2, 120);
+        rect($mc - 6, $desk - 1, $mc + 6, $desk - 1, 140);
+        # keyboard to the right, keys in two shades
+        my $kx0 = $mx1 + 3; my $kx1 = $kx0 + ($C >= 56 ? 16 : 10);
+        if ($kx1 < $C - 1) {
+            rect($kx0, $desk - 2, $kx1, $desk - 1, 112);
+            px($_, $desk - 2, ($_ - $kx0) % 2 ? 176 : 150) for $kx0 + 1 .. $kx1 - 1;
+            px($_, $desk - 1, ($_ - $kx0) % 3 ? 160 : 130) for $kx0 + 1 .. $kx1 - 1;
+            px($kx1 + 3, $desk - 1, 150); px($kx1 + 4, $desk - 1, 120);   # mouse
+        }
+        # a mug of coffee on the left
+        $mugx = $mx0 - 6; $mugy = $desk - 4;
+        if ($mugx > 1) {
+            rect($mugx, $mugy, $mugx + 3, $desk - 1, 196); px($mugx + 4, $mugy + 1, 176); px($mugx + 4, $mugy + 2, 176);
+            rect($mugx, $mugy, $mugx + 3, $mugy, 60);
+        }
+        # stack of floppies
+        my $fx = $mugx - 6;
+        if ($fx > 0) { rect($fx, $desk - 1, $fx + 3, $desk - 1, 90); rect($fx, $desk - 2, $fx + 3, $desk - 2, 64); px($fx + 1, $desk - 2, 140) }
+    }
+    @drops = ();
+    my $n = $MODE eq 'rain' ? int($C * .55) : int($C * .3);
+    push @drops, newdrop(1) for 1 .. $n;
+    @blips = (); @lines = (); $typing = ''; $tpos = 0; $tnext = 0;
+    if ($MODE eq 'crt') { my $ft = 0; for (1 .. 9 + int rand 40) { step_session($ft); $ft += .35 } $tnext = 0 }   # start mid-session
+}
+sub newdrop {
+    my $anywhere = shift;
+    { x => int rand $C, y => $anywhere ? rand($R) - $R * .3 : -rand($R * .5),
+      v => ($MODE eq 'rain' ? .18 : .12) + rand(.22), len => 4 + int rand($MODE eq 'rain' ? 14 : 7),
+      tr => [ map { glyph() } 1 .. 20 ], b => .45 + rand(.55) }
+}
+build();
+
+my $t0 = time - ($ONCE ? rand(200) : 0); my $frame = 0;
+if ($PIN && $PIDFILE && open(my $pf, '>', $PIDFILE)) { print $pf $$; close $pf }
+
+# the CRT's little session: types a command, prints its answer, scrolls
+sub step_session {
+    my $t = shift;
+    return if $t < $tnext;
+    if ($typing eq '') {
+        my ($cmd, $out) = @{ $SCRIPT[$si++ % @SCRIPT] };
+        $out = sprintf('%02d:%02d', (localtime)[2, 1]) if $cmd =~ /^date/;
+        $typing = $cmd; $tpos = 0; $screen{out} = $out; $tnext = $t + .6;
+        push @lines, '$ ';
+    } elsif ($tpos < length $typing) {
+        $lines[-1] .= substr($typing, $tpos++, 1); $tnext = $t + .08 + rand(.12);
+    } else {
+        push @lines, $screen{out} if length $screen{out};
+        $typing = ''; $tnext = $t + 2.2 + rand(1.5);
+    }
+    shift @lines while @lines > ($screen{h} || 5) - 1 && $typing ne '';
+    shift @lines while @lines > ($screen{h} || 5);
+}
+
+while (not $quit) {
+    if ($resized) { $resized = 0; build(); print "\e[2J" }
+    my $t = time - $t0;
+    my (@ch, @co);
+    for my $y (0 .. $R - 1) { $ch[$y] = [ (' ') x $C ]; $co[$y] = [ (undef) x $C ] }
+
+    if ($MODE eq 'radar') {
+        my ($cx, $cy) = (($C - 1) / 2, ($R - 1) / 2);
+        my $rad = $R / 2 - .5; $rad = ($C / 4 - 1) if $rad > $C / 4 - 1;
+        my $ang = $t * .55;                                          # one sweep every ~11 seconds
+        push @blips, [ rand(6.283), .2 + rand(.75), 0 ] if rand() < .02 && @blips < 6;
+        my ($ccx, $ccy) = (int($cx + .5), int($cy + .5));
+        for my $y (0 .. $R - 1) { for my $x (0 .. $C - 1) {
+            my ($dx, $dy) = (($x - $cx) / 2, $y - $cy);
+            my $d = sqrt($dx * $dx + $dy * $dy) / $rad; next if $d > 1.04;
+            my $a = atan2($dy, $dx);
+            my $behind = ($ang - $a) - 6.283 * int(($ang - $a) / 6.283); $behind += 6.283 if $behind < 0;
+            my $glow = $behind < 1.6 ? (1 - $behind / 1.6) ** 2.2 : 0;
+            if ($d > .95) { $ch[$y][$x] = '·'; $co[$y][$x] = fgc(80 + 120 * $glow); next }
+            if ($behind < .09 && $d > .04) { $ch[$y][$x] = '•'; $co[$y][$x] = fgc(235); next }
+            my $grid = ($x == $ccx) ? '┊' : ($y == $ccy) ? '┈' : (abs($d - .5) < .04) ? '·' : '';
+            if ($glow > .06) {
+                $ch[$y][$x] = $glow > .55 ? ':' : $glow > .25 ? '·' : $grid || '.';
+                $co[$y][$x] = fgc(34 + 170 * $glow);
+            } elsif ($grid) { $ch[$y][$x] = $grid; $co[$y][$x] = fgc(48) }
+        } }
+        for my $b (@blips) {
+            my ($ba, $bd) = @$b;
+            my $behind = ($ang - $ba) - 6.283 * int(($ang - $ba) / 6.283); $behind += 6.283 if $behind < 0;
+            $b->[2] = 1 if $behind < .15;
+            next unless $b->[2] > .05;
+            my $x = int($cx + cos($ba) * $bd * $rad * 2 + .5); my $y = int($cy + sin($ba) * $bd * $rad + .5);
+            next if $x < 0 || $y < 0 || $x >= $C || $y >= $R;
+            $ch[$y][$x] = $b->[2] > .6 ? '●' : $b->[2] > .3 ? '•' : '·'; $co[$y][$x] = fgc(80 + 175 * $b->[2]);
+            $b->[2] *= .985;
+        }
+        @blips = grep { $_->[2] == 0 || $_->[2] > .05 } @blips;
+        my $label = sprintf ' %03d° ', int(($ang * 57.2958) % 360);
+        my $ly = $R - 1; my $lx = int($cx + $rad * 2) - length($label); $lx = 0 if $lx < 0;
+        for my $i (0 .. length($label) - 1) { next if $lx + $i >= $C; $ch[$ly][$lx + $i] = substr($label, $i, 1); $co[$ly][$lx + $i] = fgc(110) }
+    } else {
+        # rain behind everything
+        for my $d (@drops) {
+            $d->{y} += $d->{v};
+            if (rand() < .08) { $d->{tr}[ int rand @{ $d->{tr} } ] = glyph() }
+            my $head = int $d->{y};
+            for my $i (0 .. $d->{len} - 1) {
+                my $y = $head - $i; next if $y < 0 || $y >= $R;
+                my $k = $i / $d->{len};
+                my $lum = $i == 0 ? 235 : (150 - 120 * $k) * $d->{b};
+                $lum *= .55 if $MODE eq 'crt';
+                $ch[$y][$d->{x}] = $d->{tr}[ ($head - $i) % 20 ]; $co[$y][$d->{x}] = fgc($lum);
+            }
+            %$d = %{ newdrop(0) } if $head - $d->{len} > $R;
+        }
+    }
+
+    if ($MODE eq 'crt') {
+        my @pix = map { [ @$_ ] } @base;
+        # steam from the mug: two thin wisps
+        if ($mugx && $mugx > 1) {
+            for my $w (0) {
+                for my $i (0 .. 4) {
+                    my $p = ($t * .35 + $i * .2 + $w * .5); $p -= int $p;
+                    my $y = int($mugy - 1 - $p * 6);
+                    my $x = int($mugx + 1 + $w + sin($t * .9 + $p * 5 + $w * 2) * .8 + .5);
+                    next if $y < 0 || $x < 0 || $x >= $C;
+                    my $v = 26 + 46 * (1 - $p) * (1 - $p);
+                    $pix[$y][$x] = $v if !defined $pix[$y][$x];
+                }
+            }
+        }
+        for my $y (0 .. $R - 1) { for my $x (0 .. $C - 1) {
+            my ($a, $b) = ($pix[2 * $y][$x], $pix[2 * $y + 1][$x]);
+            next unless defined $a || defined $b;
+            if (defined $a && defined $b) { $ch[$y][$x] = '▀'; $co[$y][$x] = '38;2;' . g($a) . ';48;2;' . g($b) }
+            elsif (defined $a)            { $ch[$y][$x] = '▀'; $co[$y][$x] = '38;2;' . g($a) . ';49' }
+            else                          { $ch[$y][$x] = '▄'; $co[$y][$x] = '38;2;' . g($b) . ';49' }
+        } }
+        # text on the glass, with a slow phosphor flicker
+        step_session($t);
+        my $fl = .92 + .08 * sin($t * 7.3) * sin($t * 2.1);
+        my @show = @lines; my $cur = ($t * 1.6) % 2 < 1;
+        for my $r (0 .. $screen{h} - 1) {
+            my $y = $screen{cy} + $r; next if $y >= $R;
+            my $s = $show[$r] // '';
+            my $age = @show - $r;                                     # older lines dimmer
+            my $lum = (220 - 22 * ($age - 1)) * $fl; $lum = 120 if $lum < 120;
+            my $bg = ';48;2;' . g($r % 2 ? 10 : 14);                  # scanlines
+            for my $i (0 .. $screen{w} - 1) {
+                my $x = $screen{x} + $i; next if $x >= $C;
+                my $c = $i < length($s) ? substr($s, $i, 1) : ' ';
+                if ($r == $#show && $i == length($s) && $cur) { $c = '█' }
+                $ch[$y][$x] = $c; $co[$y][$x] = '38;2;' . g($c eq '█' ? 200 * $fl : $lum) . $bg;
+            }
+        }
+    }
+
+    if ($PIN) {
+        my $o = "\e[?2026h\e7";
+        for my $y (0 .. $R - 1) {
+            $o .= "\e[" . ($y + 1) . ";1H" . (' ' x $PIN_MH);
+            my $prev = '';
+            for my $x (0 .. $C - 1) {
+                my $c = $co[$y][$x];
+                if (defined $c) { if ($c ne $prev) { $o .= "\e[${c}m"; $prev = $c } }
+                elsif ($prev ne '') { $o .= "\e[0m"; $prev = '' }
+                $o .= $ch[$y][$x];
+            }
+            $o .= "\e[0m\e[K";
+        }
+        if ($PIN eq 'paint' or $frame % 40 == 0) {
+            my @b = split /\n/, $BOX;
+            $o .= "\e[" . ($R + 1 + $_) . ";1H" . $b[$_] . "\e[0m\e[K" for 0 .. $#b;
+        }
+        $o .= "\e8\e[?2026l";
+        my $ok = print $o;
+        $frame++;
+        last if $PIN eq 'paint' or not defined $ok or $quit or $t >= $PIN_SECS;
+        last if $SHELLPID && $frame % 40 == 0 && not kill(0, $SHELLPID);
+        my $d = $t0 + $frame / $FPS - time; sleep($d) if $d > 0;
+        next;
+    }
+    if ($ONCE) {
+        my @rows;
+        for my $y (0 .. $R - 1) {
+            my ($o, $prev) = ('', '');
+            for my $x (0 .. $C - 1) {
+                my $c = $co[$y][$x];
+                if (defined $c) { if ($c ne $prev) { $o .= "\e[${c}m"; $prev = $c } }
+                elsif ($prev ne '') { $o .= "\e[0m"; $prev = '' }
+                $o .= $ch[$y][$x];
+            }
+            push @rows, $o . "\e[0m";
+        }
+        print join("\n", @rows), "\n";
+        last;
+    }
+    my $out = "\e[?2026h";
+    for my $y (0 .. $R - 1) {
+        $out .= "\e[" . ($y + 1) . ";1H";
+        my $prev = '';
+        for my $x (0 .. $C - 1) {
+            my $c = $co[$y][$x];
+            if (defined $c) { if ($c ne $prev) { $out .= "\e[${c}m"; $prev = $c } }
+            elsif ($prev ne '') { $out .= "\e[0m"; $prev = '' }
+            $out .= $ch[$y][$x];
+        }
+    }
+    print $out . "\e[0m\e[?2026l";
+    $frame++;
+    last if $TEST && $frame >= $TEST;
+    my $d = $t0 + $frame / $FPS - time; sleep($d) if $d > 0 and not $TEST;
+}

@@ -1,0 +1,7 @@
+# Yazi settings shared by every realm (copied into each realm's yazi folder).
+[mgr]
+ratio = [1, 3, 4]
+show_hidden = false
+sort_by = "natural"
+sort_dir_first = true
+linemode = "size"

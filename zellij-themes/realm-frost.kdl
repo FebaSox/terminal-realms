@@ -1,0 +1,129 @@
+// Frost: deep navy and dusky snow, lantern amber for the active tab, aurora accents.
+themes {
+    realm-frost {
+        text_unselected {
+            base 156 196 240
+            background 10 15 26
+            emphasis_0 240 180 90
+            emphasis_1 127 224 168
+            emphasis_2 111 200 208
+            emphasis_3 160 144 224
+        }
+        text_selected {
+            base 223 231 242
+            background 20 30 50
+            emphasis_0 240 180 90
+            emphasis_1 127 224 168
+            emphasis_2 111 200 208
+            emphasis_3 160 144 224
+        }
+        ribbon_unselected {
+            base 156 196 240
+            background 20 30 50
+            emphasis_0 111 200 208
+            emphasis_1 127 224 168
+            emphasis_2 240 180 90
+            emphasis_3 160 144 224
+        }
+        ribbon_selected {
+            base 10 15 26
+            background 240 180 90
+            emphasis_0 20 30 50
+            emphasis_1 111 200 208
+            emphasis_2 127 224 168
+            emphasis_3 160 144 224
+        }
+        table_title {
+            base 240 180 90
+            background 10 15 26
+            emphasis_0 127 224 168
+            emphasis_1 111 200 208
+            emphasis_2 156 196 240
+            emphasis_3 160 144 224
+        }
+        table_cell_unselected {
+            base 156 196 240
+            background 10 15 26
+            emphasis_0 240 180 90
+            emphasis_1 127 224 168
+            emphasis_2 111 200 208
+            emphasis_3 160 144 224
+        }
+        table_cell_selected {
+            base 223 231 242
+            background 20 30 50
+            emphasis_0 240 180 90
+            emphasis_1 127 224 168
+            emphasis_2 111 200 208
+            emphasis_3 160 144 224
+        }
+        list_unselected {
+            base 156 196 240
+            background 10 15 26
+            emphasis_0 240 180 90
+            emphasis_1 127 224 168
+            emphasis_2 111 200 208
+            emphasis_3 160 144 224
+        }
+        list_selected {
+            base 223 231 242
+            background 20 30 50
+            emphasis_0 240 180 90
+            emphasis_1 127 224 168
+            emphasis_2 111 200 208
+            emphasis_3 160 144 224
+        }
+        frame_unselected {
+            base 59 74 99
+            background 10 15 26
+            emphasis_0 156 196 240
+            emphasis_1 240 180 90
+            emphasis_2 111 200 208
+            emphasis_3 127 224 168
+        }
+        frame_selected {
+            base 156 196 240
+            background 10 15 26
+            emphasis_0 127 224 168
+            emphasis_1 111 200 208
+            emphasis_2 156 196 240
+            emphasis_3 160 144 224
+        }
+        frame_highlight {
+            base 111 200 208
+            background 10 15 26
+            emphasis_0 127 224 168
+            emphasis_1 240 180 90
+            emphasis_2 156 196 240
+            emphasis_3 160 144 224
+        }
+        exit_code_success {
+            base 111 200 208
+            background 10 15 26
+            emphasis_0 127 224 168
+            emphasis_1 240 180 90
+            emphasis_2 111 200 208
+            emphasis_3 156 196 240
+        }
+        exit_code_error {
+            base 208 96 94
+            background 10 15 26
+            emphasis_0 127 224 168
+            emphasis_1 240 180 90
+            emphasis_2 111 200 208
+            emphasis_3 156 196 240
+        }
+        multiplayer_user_colors {
+            player_1 240 180 90
+            player_2 111 200 208
+            player_3 127 224 168
+            player_4 156 196 240
+            player_5 160 144 224
+            player_6 223 231 242
+            player_7 59 74 99
+            player_8 208 96 94
+            player_9 240 180 90
+            player_10 111 200 208
+        }
+    }
+}

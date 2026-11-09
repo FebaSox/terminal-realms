@@ -1,0 +1,82 @@
+# Yazi colors for the frost realm. Loaded through YAZI_CONFIG_HOME, so each window follows its realm.
+[mgr]
+cwd = { fg = "#9cc4f0", bold = true }
+find_keyword = { fg = "#f0b45a", bold = true, italic = true }
+find_position = { fg = "#6fd0c0", bold = true }
+marker_copied = { fg = "#f0b45a", bg = "#f0b45a" }
+marker_cut = { fg = "#d0605e", bg = "#d0605e" }
+marker_marked = { fg = "#6fd0c0", bg = "#6fd0c0" }
+marker_selected = { fg = "#9cc4f0", bg = "#9cc4f0" }
+count_copied = { fg = "#0a0f1a", bg = "#f0b45a" }
+count_cut = { fg = "#0a0f1a", bg = "#d0605e" }
+count_selected = { fg = "#0a0f1a", bg = "#9cc4f0" }
+border_symbol = "│"
+border_style = { fg = "#2a3550" }
+
+[indicator]
+parent = { fg = "#0a0f1a", bg = "#3b4a63" }
+current = { fg = "#0a0f1a", bg = "#9cc4f0", bold = true }
+preview = { underline = true }
+
+[tabs]
+active = { fg = "#0a0f1a", bg = "#9cc4f0", bold = true }
+inactive = { fg = "#9cc4f0", bg = "#141d30" }
+
+[mode]
+normal_main = { fg = "#0a0f1a", bg = "#9cc4f0", bold = true }
+normal_alt = { fg = "#9cc4f0", bg = "#141d30" }
+select_main = { fg = "#0a0f1a", bg = "#f0b45a", bold = true }
+select_alt = { fg = "#f0b45a", bg = "#141d30" }
+unset_main = { fg = "#0a0f1a", bg = "#d0605e", bold = true }
+unset_alt = { fg = "#d0605e", bg = "#141d30" }
+
+[status]
+perm_type = { fg = "#9cc4f0" }
+perm_read = { fg = "#f0b45a" }
+perm_write = { fg = "#d0605e" }
+perm_exec = { fg = "#6fd0c0" }
+perm_sep = { fg = "#3b4a63" }
+progress_label = { fg = "#c8d3e6", bold = true }
+progress_normal = { fg = "#9cc4f0", bg = "#141d30" }
+progress_error = { fg = "#d0605e", bg = "#141d30" }
+
+[input]
+border = { fg = "#9cc4f0" }
+title = { fg = "#9cc4f0" }
+value = { fg = "#c8d3e6" }
+selected = { reversed = true }
+
+[confirm]
+border = { fg = "#9cc4f0" }
+title = { fg = "#9cc4f0", bold = true }
+btn_yes = { fg = "#0a0f1a", bg = "#9cc4f0", bold = true }
+btn_no = { fg = "#c8d3e6" }
+
+[which]
+mask = { bg = "#141d30" }
+cand = { fg = "#f0b45a" }
+rest = { fg = "#3b4a63" }
+desc = { fg = "#9cc4f0" }
+separator_style = { fg = "#3b4a63" }
+
+[tasks]
+border = { fg = "#9cc4f0" }
+title = { fg = "#9cc4f0" }
+hovered = { fg = "#0a0f1a", bg = "#9cc4f0" }
+
+[help]
+border = { fg = "#9cc4f0" }
+chord = { fg = "#f0b45a" }
+action = { fg = "#c8d3e6" }
+hovered = { fg = "#0a0f1a", bg = "#9cc4f0" }
+
+[filetype]
+rules = [
+  { url = "*/", fg = "#9cc4f0", bold = true },
+  { mime = "image/*", fg = "#f0b45a" },
+  { mime = "{audio,video}/*", fg = "#6fd0c0" },
+  { mime = "application/{zip,rar,7z*,tar,gzip,xz,zstd,bzip*,lzma,compress,archive}", fg = "#d0605e" },
+  { url = "*", is = "exec", fg = "#d0605e", bold = true },
+  { url = "*", is = "link", fg = "#6fd0c0", italic = true },
+  { url = "*", fg = "#c8d3e6" },
+]
