@@ -4,7 +4,7 @@ Cozy, animated themes for your terminal, Zellij and Neovim. Each theme is a **re
 
 <p align="center">
   <img src="demo.gif" width="49%" alt="Bonfire and frost demo">
-  <img src="mainframe-demo.gif" width="49%" alt="Mainframe demo">
+  <img src="more-demo.gif" width="49%" alt="Mainframe and vialmancy demo">
 </p>
 
 > **Three realms to install, plus the wizard's own.** More are on the way over the coming months.
